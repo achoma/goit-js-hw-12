@@ -1,3 +1,4 @@
+import axios from 'axios';
 import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 
@@ -9,20 +10,27 @@ const API_URL = 'https://pixabay.com/api/';
 const form = document.getElementById('search-form');
 const gallery = document.getElementById('gallery');
 const loader = document.getElementById('loader');
+const loadMoreButton = document.getElementById('load-more');
 let lightbox;
+let currentPage = 1;
+let currentQuery = '';
+let totalHits = 0;
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
-  const query = document.getElementById('query').value.trim();
+  currentQuery = document.getElementById('query').value.trim();
 
-  if (query === '') return;
+  if (currentQuery === '') return;
 
   clearGallery();
   toggleLoader(true);
+  loadMoreButton.classList.add('hidden');
+  currentPage = 1;
 
   try {
-    const response = await fetchImages(query);
+    const response = await fetchImages(currentQuery, currentPage);
     const images = response.hits;
+    totalHits = response.totalHits;
 
     if (images.length === 0) {
       showErrorMessage(
@@ -32,8 +40,11 @@ form.addEventListener('submit', async e => {
     }
 
     renderGallery(images);
-    if (lightbox) lightbox.refresh();
-    else lightbox = new SimpleLightbox('#gallery a');
+    lightbox = new SimpleLightbox('#gallery a');
+
+    if (images.length < totalHits) {
+      loadMoreButton.classList.remove('hidden');
+    }
   } catch (error) {
     handleFetchError(error);
   } finally {
@@ -41,21 +52,42 @@ form.addEventListener('submit', async e => {
   }
 });
 
-async function fetchImages(query) {
+loadMoreButton.addEventListener('click', async () => {
+  currentPage += 1;
+  toggleLoader(true);
+
+  try {
+    const response = await fetchImages(currentQuery, currentPage);
+    const images = response.hits;
+
+    renderGallery(images);
+    lightbox.refresh();
+
+    smoothScroll();
+
+    if (currentPage * 40 >= totalHits) {
+      loadMoreButton.classList.add('hidden');
+      showErrorMessage(
+        "We're sorry, but you've reached the end of search results."
+      );
+    }
+  } catch (error) {
+    handleFetchError(error);
+  } finally {
+    toggleLoader(false);
+  }
+});
+
+async function fetchImages(query, page) {
   const url = `${API_URL}?key=${API_KEY}&q=${encodeURIComponent(
     query
-  )}&image_type=photo&orientation=horizontal&safesearch=true`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
-  }
-
-  return response.json();
+  )}&image_type=photo&orientation=horizontal&safesearch=true&per_page=40&page=${page}`;
+  const response = await axios.get(url);
+  return response.data;
 }
 
 function handleFetchError(error) {
-  if (error.message === 'Network response was not ok') {
+  if (error.response && error.response.status !== 200) {
     showErrorMessage(
       'There was a problem with the network connection. Please try again later.'
     );
@@ -107,4 +139,14 @@ function clearGallery() {
 
 function toggleLoader(visible) {
   loader.classList.toggle('hidden', !visible);
+}
+
+function smoothScroll() {
+  const { height: cardHeight } = document
+    .querySelector('.gallery-item')
+    .getBoundingClientRect();
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
 }
