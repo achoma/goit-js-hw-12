@@ -14,10 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const loader = document.getElementById('loader');
   const loadMoreButton = document.getElementById('load-more');
 
-  // Check if elements exist
   if (!form || !gallery || !loader || !loadMoreButton) {
     console.error('One or more elements are missing in the DOM.');
-    return; // Stop execution if elements are not found
+    return;
   }
 
   let lightbox;
@@ -74,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       smoothScroll();
 
-      if (currentPage * 40 >= totalHits) {
+      if (currentPage * 20 >= totalHits) {
         loadMoreButton.classList.add('hidden');
         showErrorMessage(
           "We're sorry, but you've reached the end of search results."
@@ -90,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fetchImages(query, page) {
     const url = `${API_URL}?key=${API_KEY}&q=${encodeURIComponent(
       query
-    )}&image_type=photo&orientation=horizontal&safesearch=true&per_page=40&page=${page}`;
+    )}&image_type=photo&orientation=horizontal&safesearch=true&per_page=20&page=${page}`;
     const response = await axios.get(url);
     return response.data;
   }
